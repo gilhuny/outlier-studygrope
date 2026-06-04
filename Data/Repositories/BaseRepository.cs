@@ -1,0 +1,82 @@
+﻿using Microsoft.EntityFrameworkCore;
+using StudyGroup.Api.Data.Context;
+using StudyGroup.Api.Data.Repositories.Interfaces;
+using System.Linq.Expressions;
+
+namespace StudyGroup.Api.Data.Repositories
+{
+    public class BaseRepository<T>(AppDbContext context)
+            : IBaseRepository<T> where T : class
+    {
+        public async Task Add(T entity)
+        {
+            var createdDateProperty = typeof(T).GetProperty("CreatedDateTime");
+            if (createdDateProperty != null &&
+                createdDateProperty.PropertyType == typeof(DateTime) &&
+                createdDateProperty.CanWrite)
+            {
+                createdDateProperty.SetValue(entity, DateTime.UtcNow);
+            }
+            await context.Set<T>().AddAsync(entity);
+        }
+
+        public void AddRange(List<T> entities)
+        {
+            context.Set<T>().AddRange(entities);
+        }
+
+        public async Task Delete(T entity)
+        {
+            context.Set<T>().Remove(entity);
+        }
+
+        public void DeleteRange(List<T> entities)
+        {
+            context.Set<T>().RemoveRange(entities);
+        }
+
+        public IQueryable<T> GetAll(params Expression<Func<T, object>>[] includes)
+        {
+            IQueryable<T> query = context.Set<T>();
+            foreach (var include in includes)
+            {
+                query = query.Include(include);
+            }
+            return query;
+        }
+
+        public IQueryable<T> GetAllWithNestedIncludes(params string[] includesPath)
+        {
+            IQueryable<T> query = context.Set<T>();
+            foreach (var path in includesPath)
+            {
+                query = query.Include(path);
+            }
+            return query;
+        }
+
+        public async Task<T?> GetById<TK>(TK id)
+        {
+            return await context.Set<T>().FindAsync(id);
+        }
+
+        public async Task SaveChanges() => await context.SaveChangesAsync();
+
+        public async Task Update(T entity)
+        {
+            var modifyDateProperty = typeof(T).GetProperty("ModifiedDateTime");
+            if (modifyDateProperty != null &&
+                modifyDateProperty.PropertyType == typeof(DateTime?) &&
+                modifyDateProperty.CanWrite)
+            {
+                modifyDateProperty.SetValue(entity, DateTime.UtcNow);
+            }
+            context.Set<T>().Update(entity);
+        }
+
+        public void UpdateRange(List<T> entities)
+        {
+            context.Set<T>().UpdateRange(entities);
+        }
+    }
+}
